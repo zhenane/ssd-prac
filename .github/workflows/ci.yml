@@ -25,10 +25,29 @@ jobs:
         with:
           inputs: app/requirements.txt
 
+  eslint-security:
+    name: ESLint Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint (eslint-plugin-security + eslint-plugin-no-unsanitized)
+        run: npm run lint:security
+
   integration-and-ui-tests:
     name: Integration & UI Tests (HTTP)
     runs-on: ubuntu-latest
-    needs: dependency-check
+    needs: [dependency-check, eslint-security]
 
     services:
       postgres:

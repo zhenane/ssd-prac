@@ -75,3 +75,11 @@ bash scripts/setup-gitea-account.sh   # first run only
 ```bash
 sudo docker-compose down
 ```
+
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every push/PR to `main` (and manually via `workflow_dispatch`):
+
+- **Dependency Check** — `pypa/gh-action-pip-audit` scans `app/requirements.txt` for known Python vulnerabilities.
+- **ESLint Security Scan** — lints `app/static/js` with [`eslint-plugin-security`](https://github.com/eslint-community/eslint-plugin-security) (unsafe `eval`, non-literal `RegExp`/`require`, etc.) and [`eslint-plugin-no-unsanitized`](https://github.com/mozilla/eslint-plugin-no-unsanitized) (DOM XSS sinks like `innerHTML`). Config: `eslint.config.js`. Run locally with `npm install && npm run lint:security`.
+- **Integration & UI Tests (HTTP)** — runs after both checks above pass; starts the Flask app directly over HTTP against a Postgres service container and runs `tests/test_integration.py` (HTTP + DB assertions) and `tests/test_ui.py` (Playwright/Chromium, including a JS-disabled test proving server-side validation holds independently of the client).
