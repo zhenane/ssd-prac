@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main>
+        <h1>Search</h1>
+
+        {% if error %}
+        <p class="error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        <form id="search-form" action="{{ url_for('search') }}" method="post" novalidate>
+            <label for="search_term">Enter a search term:</label>
+            <input
+                type="text"
+                id="search_term"
+                name="search_term"
+                value="{{ search_term|default('') }}"
+                minlength="{{ min_length }}"
+                maxlength="{{ max_length }}"
+                required
+                autocomplete="off"
+            >
+            <span id="client-error" class="error" aria-live="polite"></span>
+            <button type="submit">Search</button>
+        </form>
+    </main>
+    <script src="{{ url_for('static', filename='js/validate.js') }}"></script>
+</body>
+</html>

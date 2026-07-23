@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main>
+        <h1>Search Results</h1>
+        <!-- Jinja2 auto-escapes this value, so it is safe to render even
+             though it originated as user input. -->
+        <p>You searched for: <strong>{{ search_term }}</strong></p>
+        <a href="{{ url_for('home') }}"><button type="button">Back to Home</button></a>
+    </main>
+</body>
+</html>
