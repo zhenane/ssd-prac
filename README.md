@@ -52,8 +52,20 @@ The local repo's git identity (`git config user.name` / `user.email`, used for c
 
 ## Usage
 
+From the repository root:
+
 ```bash
-docker compose up -d
+sudo docker-compose up
+```
+
+This builds the `app` image and starts all four services (`web`, `app`, `db`, `gitea`) in the foreground. No prior setup is required — the TLS certificate, htpasswd file and database schema are already included in the repo, and Postgres/Gitea initialize themselves on first boot. Gitea takes ~20–30 seconds to finish its first-run initialization; the other three services are ready almost immediately.
+
+(`sudo` is only necessary on Linux/macOS when your user isn't in the `docker` group. On Docker Desktop for Windows/Mac it isn't needed and can be omitted. `docker-compose` and the newer `docker compose` are interchangeable here — both were tested against this stack.)
+
+To run detached and provision the Gitea account (username `GohZhenAnErnest`, see below):
+
+```bash
+sudo docker-compose up -d
 bash scripts/setup-gitea-account.sh   # first run only
 ```
 
@@ -61,5 +73,5 @@ bash scripts/setup-gitea-account.sh   # first run only
 - Git server: http://127.0.0.1:3000/ (login `GohZhenAnErnest` / `2401807@sit.singaporetech.edu.sg`)
 
 ```bash
-docker compose down
+sudo docker-compose down
 ```
