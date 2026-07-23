@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Audit app dependencies for known vulnerabilities
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: app/requirements.txt
+
+  integration-and-ui-tests:
+    name: Integration & UI Tests (HTTP)
+    runs-on: ubuntu-latest
+    needs: dependency-check
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ssd_prac
+          POSTGRES_USER: ssd_user
+          POSTGRES_PASSWORD: ssd_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ssd_user -d ssd_prac"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: ssd_prac
+      DB_USER: ssd_user
+      DB_PASSWORD: ssd_test_password
+      APP_URL: http://127.0.0.1:5000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install application dependencies
+        run: pip install -r app/requirements.txt
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Initialize database schema (table "2401807")
+        run: |
+          python - <<'PY'
+          import psycopg2
+
+          with open("db/init.sql") as f:
+              sql = f.read()
+
+          conn = psycopg2.connect(
+              host="localhost", port=5432,
+              dbname="ssd_prac", user="ssd_user", password="ssd_test_password",
+          )
+          conn.autocommit = True
+          with conn.cursor() as cur:
+              cur.execute(sql)
+          conn.close()
+          PY
+
+      - name: Start the Flask application over HTTP
+        working-directory: app
+        run: |
+          nohup python app.py > app.log 2>&1 &
+          echo "Waiting for the app to become ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:5000/ > /dev/null; then
+              echo "App is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not start in time" >&2
+          cat app.log
+          exit 1
+
+      - name: Run integration tests
+        run: pytest tests/test_integration.py -v
+
+      - name: Install Playwright browser (Chromium)
+        run: playwright install --with-deps chromium
+
+      - name: Run UI tests (over HTTP)
+        run: pytest tests/test_ui.py -v
+
+      - name: Show application logs
+        if: always()
+        run: cat app/app.log || true
