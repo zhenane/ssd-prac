@@ -1,12 +1,20 @@
 import os
+import secrets
 from datetime import datetime
 
 import psycopg2
 from flask import Flask, render_template, request
+from flask_wtf import CSRFProtect
 
 from validation import MAX_LENGTH, MIN_LENGTH, validate_search_term
 
 app = Flask(__name__)
+# Required by Flask-WTF to sign CSRF tokens. Falls back to a fresh random
+# key per process (invalidating outstanding tokens on restart) rather than
+# a hardcoded default, since a literal secret in source is itself a
+# security issue.
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+csrf = CSRFProtect(app)
 
 DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "db"),
@@ -61,4 +69,8 @@ def search():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # This dev-server entry point is only used for local/CI runs (the
+    # container's real entrypoint is gunicorn, see Dockerfile), where the
+    # test client always runs on the same host - loopback is sufficient
+    # and avoids exposing the Flask dev server on all interfaces.
+    app.run(host="127.0.0.1", port=5000)

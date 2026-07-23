@@ -5,9 +5,11 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+      - sonarqube
     ports:
       - "80:80"
       - "443:443"
+      - "9000:9000"
     volumes:
       - ./web/conf/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./web/.htpasswd:/etc/nginx/.htpasswd:ro
@@ -45,6 +47,45 @@ services:
       timeout: 5s
       retries: 5
 
+  sonar-db:
+    image: postgres:16-alpine
+    container_name: ssd-sonar-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=sonarqube
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=2401807@sit.singaporetech.edu.sg
+    volumes:
+      - sonar-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: ssd-sonarqube
+    restart: unless-stopped
+    environment:
+      - SONAR_JDBC_URL=jdbc:postgresql://sonar-db:5432/sonarqube
+      - SONAR_JDBC_USERNAME=sonar
+      - SONAR_JDBC_PASSWORD=2401807@sit.singaporetech.edu.sg
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+    ulimits:
+      nofile:
+        soft: 131072
+        hard: 131072
+      nproc:
+        soft: 8192
+        hard: 8192
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+
   gitea:
     image: gitea/gitea:latest
     container_name: ssd-gitea
@@ -66,3 +107,7 @@ services:
 
 volumes:
   db-data:
+  sonar-db-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:

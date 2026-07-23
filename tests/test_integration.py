@@ -8,6 +8,7 @@ i.e. that validated searches are persisted to the "2401807" table and that
 rejected (attack) input is never persisted.
 """
 import os
+import re
 import time
 
 import psycopg2
@@ -24,6 +25,8 @@ DB_CONFIG = dict(
     password=os.environ.get("DB_PASSWORD", ""),
 )
 
+CSRF_INPUT_RE = re.compile(r'name="csrf_token"\s+value="([^"]+)"')
+
 
 def count_rows():
     conn = psycopg2.connect(**DB_CONFIG)
@@ -35,11 +38,24 @@ def count_rows():
         conn.close()
 
 
+def post_search(session, term):
+    """Fetch a fresh CSRF token from the home page, then submit the search
+    form with it - mirrors what a real browser does via the hidden field."""
+    home_resp = session.get(APP_URL + "/")
+    token = CSRF_INPUT_RE.search(home_resp.text).group(1)
+    return session.post(APP_URL + "/search", data={"search_term": term, "csrf_token": token})
+
+
 def test_home_page_loads_with_search_form():
     resp = requests.get(APP_URL + "/")
     assert resp.status_code == 200
     assert 'name="search_term"' in resp.text
     assert 'type="submit"' in resp.text
+
+
+def test_search_without_csrf_token_is_rejected():
+    resp = requests.post(APP_URL + "/search", data={"search_term": "no token"})
+    assert resp.status_code == 400
 
 
 @pytest.mark.parametrize(
@@ -52,7 +68,8 @@ def test_home_page_loads_with_search_form():
 )
 def test_sql_injection_is_rejected_and_not_logged(term):
     before = count_rows()
-    resp = requests.post(APP_URL + "/search", data={"search_term": term})
+    with requests.Session() as session:
+        resp = post_search(session, term)
     assert resp.status_code == 200
     assert "SQL Injection" in resp.text
     assert count_rows() == before
@@ -68,20 +85,23 @@ def test_sql_injection_is_rejected_and_not_logged(term):
 )
 def test_xss_is_rejected_and_not_logged(term):
     before = count_rows()
-    resp = requests.post(APP_URL + "/search", data={"search_term": term})
+    with requests.Session() as session:
+        resp = post_search(session, term)
     assert resp.status_code == 200
     assert "XSS" in resp.text
     assert count_rows() == before
 
 
 def test_empty_search_term_is_rejected():
-    resp = requests.post(APP_URL + "/search", data={"search_term": ""})
+    with requests.Session() as session:
+        resp = post_search(session, "")
     assert resp.status_code == 200
     assert "at least 1 character" in resp.text
 
 
 def test_overlong_search_term_is_rejected():
-    resp = requests.post(APP_URL + "/search", data={"search_term": "a" * 101})
+    with requests.Session() as session:
+        resp = post_search(session, "a" * 101)
     assert resp.status_code == 200
     assert "must not exceed 100 characters" in resp.text
 
@@ -90,7 +110,8 @@ def test_valid_search_is_accepted_and_logged():
     before = count_rows()
     term = f"integration test {int(time.time())}"
 
-    resp = requests.post(APP_URL + "/search", data={"search_term": term})
+    with requests.Session() as session:
+        resp = post_search(session, term)
 
     assert resp.status_code == 200
     assert term in resp.text
