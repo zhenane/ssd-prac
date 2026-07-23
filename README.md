@@ -10,7 +10,7 @@ search application, a Postgres database, and a local Gitea git server.
 - `http://127.0.0.1/` redirects to HTTPS.
 - Protected with HTTP Basic Auth:
   - Username: `admin`
-  - Password: `2401807@sit.singaporetech.edu.sg`
+  - Password: `2401807@SIT.singaporetech.edu.sg`
 - Credentials are stored as an apr1-hashed entry in `web/.htpasswd` (not the plaintext password).
 - Your browser/client will warn about the self-signed cert (`NET::ERR_CERT_AUTHORITY_INVALID` or similar) — this is expected; accept/trust it to proceed. With `curl`, use `-k`.
 - All requests are reverse-proxied to the `app` service — nginx only handles TLS termination and Basic Auth.
@@ -101,7 +101,7 @@ bash scripts/setup-gitea-account.sh       # first run only
 bash scripts/setup-sonarqube-account.sh   # first run only, after SonarQube reports status UP
 ```
 
-- Website / search app: https://127.0.0.1/ (login `admin` / `2401807@sit.singaporetech.edu.sg`)
+- Website / search app: https://127.0.0.1/ (login `admin` / `2401807@SIT.singaporetech.edu.sg`)
 - SonarQube: https://127.0.0.1:9000/ (login `admin` / `2401807@SIT.singaporetech.edu.sg`)
 - Git server: http://127.0.0.1:3000/ (login `GohZhenAnErnest` / `2401807@sit.singaporetech.edu.sg`)
 
